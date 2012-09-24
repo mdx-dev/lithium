@@ -93,7 +93,9 @@ class Response extends \lithium\net\http\Response {
 		if (isset($this->headers['location']) && $this->status['code'] === 200) {
 			$code = 302;
 		}
-		$this->_writeHeader($this->status($code) ?: $this->status(500));
+		if($this->status['code'] !== 200) {
+			$this->_writeHeader($this->status($code) ?: $this->status(500));
+		}
 
 		foreach ($this->headers as $name => $value) {
 			$key = strtolower($name);
