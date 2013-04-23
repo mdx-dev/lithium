@@ -80,7 +80,7 @@ class MockerTest extends \lithium\test\Unit {
 
 	public function testFilteringNonStaticClass() {
 		$dispatcher = new \lithium\console\dispatcher\Mock();
-		
+
 		$originalResult = $dispatcher->config(array());
 
 		$dispatcher->applyFilter('config', function($self, $params, $chain) {
@@ -95,7 +95,7 @@ class MockerTest extends \lithium\test\Unit {
 
 	public function testFilteringNonStaticClassCanReturnOriginal() {
 		$response = new \lithium\console\response\Mock();
-		
+
 		$originalResult = $response->styles();
 
 		$response->applyFilter('styles', function($self, $params, $chain) {
@@ -111,7 +111,7 @@ class MockerTest extends \lithium\test\Unit {
 		$mockee = 'lithium\analysis\parser\Mock';
 
 		$code = 'echo "foobar";';
-		
+
 		$originalResult = $mockee::tokenize($code, array('wrap' => true));
 
 		$mockee::applyFilter('tokenize', function($self, $params, $chain) {
@@ -126,7 +126,7 @@ class MockerTest extends \lithium\test\Unit {
 
 	public function testFilteringStaticClassCanReturnOriginal() {
 		$mockee = 'lithium\analysis\inspector\Mock';
-		
+
 		$originalResult = $mockee::methods('lithium\analysis\Inspector');
 
 		$mockee::applyFilter('tokenize', function($self, $params, $chain) {
@@ -420,6 +420,26 @@ class MockerTest extends \lithium\test\Unit {
 
 		$this->assertArrayHasKey('__call', $results);
 		$this->assertCount(2, $results['__call']);
+	}
+
+	public function testDoesNotThrowExceptionWhenMockingIterator() {
+		$this->assertNotException('Exception', function() {
+			return new \lithium\util\collection\Mock;
+		});
+	}
+
+	public function testMockDocument() {
+		$document = new Document();
+	}
+
+	public function testMockModel() {
+		$entity = MockPost::create();
+	}
+
+	public function testConstructParams() {
+		$expected = 'lithium\tests\mocks\data\MockPost';
+		$document = new Document(array('model' => $expected));
+		$this->assertIdentical($expected, $document->model());
 	}
 
 }

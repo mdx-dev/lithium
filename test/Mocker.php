@@ -155,7 +155,7 @@ class Mocker {
 			'    $args = compact({:stringArgs});',
 			'    $this->parent = func_get_arg(func_num_args() - 1);',
 			'    $this->parent->mocker = $this;',
-			'    if (method_exists("{:mocker}", "__construct")) {',
+			'    if (method_exists(\'{:mocker}\', "__construct")) {',
 			'        call_user_func_array("parent::__construct", $args);',
 			'    }',
 			'}',
