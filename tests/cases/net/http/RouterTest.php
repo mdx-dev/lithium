@@ -411,6 +411,12 @@ class RouterTest extends \lithium\test\Unit {
 		$this->assertEqual($expected, $result);
 	}
 
+	public function testJavaScriptUrlGeneration() {
+		$result = Router::match('javascript:alert(1)');
+		$expected = 'javascript:alert(1)';
+		$this->assertEqual($expected, $result);
+	}
+
 	public function testWithWildcardString() {
 		Router::connect('/add/{:args}', array('controller' => 'tests', 'action' => 'add'));
 
