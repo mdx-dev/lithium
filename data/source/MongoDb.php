@@ -247,7 +247,7 @@ class MongoDb extends \lithium\data\Source {
 
 		$options = array(
 			'connect' => true,
-			'timeout' => $cfg['timeout'],
+			'connectTimeoutMS' => $cfg['timeout'],
 			'replicaSet' => $cfg['replicaSet']
 		);
 
