@@ -249,7 +249,9 @@ class MongoDb extends \lithium\data\Source {
 		$login = $cfg['login'] ? "{$cfg['login']}:{$cfg['password']}@" : '';
 		$connection = "mongodb://{$login}{$host}" . ($login ? "/{$cfg['database']}" : '');
 		$options = array(
-			'connect' => true, 'timeout' => $cfg['timeout'], 'replicaSet' => $cfg['replicaSet']
+			'connect' => true,
+			'connectTimeoutMS' => $cfg['timeout'],
+			'replicaSet' => $cfg['replicaSet']
 		);
 
 		try {
