@@ -103,7 +103,7 @@ class File extends \lithium\core\Object {
 			$expiry = $matches[1];
 
 			if ($expiry < time()) {
-				unlink($path);
+				file_exists($path) && unlink($path);
 				return false;
 			}
 			return preg_replace('/^\{\:expiry\:\d+\}\\n/', '', $data, 1);
@@ -124,8 +124,8 @@ class File extends \lithium\core\Object {
 			$path = "$path/$key";
 			$file = new SplFileInfo($path);
 
-			if ($file->isFile() && $file->isReadable())  {
-				return unlink($path);
+			if ($file->isFile() && $file->isReadable()) {
+				return file_exists($path) && unlink($path);
 			}
 			return false;
 		};
