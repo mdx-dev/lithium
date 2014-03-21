@@ -155,7 +155,7 @@ class Mocker {
 			'    $args = compact({:stringArgs});',
 			'    $this->parent = func_get_arg(func_num_args() - 1);',
 			'    $this->parent->mocker = $this;',
-			'    if (method_exists("{:mocker}", "__construct")) {',
+			'    if (method_exists("{:strSafeMocker}", "__construct")) {',
 			'        call_user_func_array("parent::__construct", $args);',
 			'    }',
 			'}',
@@ -384,6 +384,7 @@ class Mocker {
 					'modifiers' => self::_methodModifiers($method),
 					'args' => self::_methodParams($method),
 					'stringArgs' => self::_stringMethodParams($method),
+					'strSafeMocker' => str_replace('\\', '\\\\', $mocker),
 					'mocker' => $mocker,
 				);
 				$mockDelegate .= self::_dynamicCode('mockDelegate', $key, $tokens);
