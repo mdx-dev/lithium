@@ -137,24 +137,16 @@ class Object {
 	 * @see lithium\core\Object::_filter()
 	 * @see lithium\util\collection\Filters
 	 * @param mixed $method The name of the method to apply the closure to. Can either be a single
-	 *        method name as a string, or an array of method names. Can also be false to remove
-	 *        all filters on the current object.
-	 * @param closure $filter The closure that is used to filter the method(s), can also be false
-	 *        to remove all the current filters for the given method.
+	 *        method name as a string, or an array of method names.
+	 * @param closure $filter The closure that is used to filter the method(s).
 	 * @return void
 	 */
 	public function applyFilter($method, $filter = null) {
-		if ($method === false) {
-			$this->_methodFilters = array();
-			return;
-		}
 		foreach ((array) $method as $m) {
-			if (!isset($this->_methodFilters[$m]) || $filter === false) {
+			if (!isset($this->_methodFilters[$m])) {
 				$this->_methodFilters[$m] = array();
 			}
-			if ($filter !== false) {
-				$this->_methodFilters[$m][] = $filter;
-			}
+			$this->_methodFilters[$m][] = $filter;
 		}
 	}
 
@@ -274,7 +266,6 @@ class Object {
 	protected function _stop($status = 0) {
 		exit($status);
 	}
-
 }
 
 ?>

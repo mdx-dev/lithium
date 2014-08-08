@@ -346,7 +346,7 @@ class Router extends \lithium\core\StaticObject {
 			if (strpos($url, '://')) {
 				return $url;
 			}
-			foreach (array('#', '//', 'mailto', 'javascript') as $prefix) {
+			foreach (array('#', '//', 'mailto') as $prefix) {
 				if (strpos($url, $prefix) === 0) {
 					return $url;
 				}
