@@ -136,11 +136,12 @@ class Dispatcher extends \lithium\core\StaticObject {
 	 */
 	public static function run($request, array $options = array()) {
 		$router = static::$_classes['router'];
-		$params = compact('request', 'options');
+		$params = compact('request', 'options', 'router');
 
-		return static::_filter(__FUNCTION__, $params, function($self, $params) use ($router) {
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$request = $params['request'];
 			$options = $params['options'];
+			$router  = $params['router'];
 
 			if (($result = $router::process($request)) instanceof Response) {
 				return $result;
