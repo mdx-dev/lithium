@@ -63,12 +63,14 @@ class MongoDb extends \lithium\data\Source {
 	 * @var array
 	 */
 	protected $_classes = array(
-		'entity'   => 'lithium\data\entity\Document',
-		'array'    => 'lithium\data\collection\DocumentArray',
-		'set'      => 'lithium\data\collection\DocumentSet',
-		'result'   => 'lithium\data\source\mongo_db\Result',
-		'exporter' => 'lithium\data\source\mongo_db\Exporter',
-		'relationship' => 'lithium\data\model\Relationship'
+		'entity'       => 'lithium\data\entity\Document',
+		'array'        => 'lithium\data\collection\DocumentArray',
+		'set'          => 'lithium\data\collection\DocumentSet',
+		'result'       => 'lithium\data\source\mongo_db\Result',
+		'schema'       => 'lithium\data\source\mongo_db\Schema',
+		'exporter'     => 'lithium\data\source\mongo_db\Exporter',
+		'relationship' => 'lithium\data\model\Relationship',
+		'server'       => 'MongoClient'
 	);
 
 	/**
@@ -153,7 +155,11 @@ class MongoDb extends \lithium\data\Source {
 			'timeout'    => 100,
 			'replicaSet' => false,
 			'schema'     => null,
-			'gridPrefix' => 'fs'
+			'gridPrefix' => 'fs',
+			'w'          => 1,
+			'wTimeoutMS' => 10000,
+			'readPreference' => null,
+			'autoConnect' => false
 		);
 		parent::__construct($config + $defaults);
 	}
@@ -258,11 +264,18 @@ class MongoDb extends \lithium\data\Source {
 			if ($persist = $cfg['persistent']) {
 				$options['persist'] = $persist === true ? 'default' : $persist;
 			}
-			$this->server = new Mongo($connection, $options);
+			$server = $this->_classes['server'];
+			$this->server = new $server($connection, $options);
 
 			if ($this->connection = $this->server->{$cfg['database']}) {
 				$this->_isConnected = true;
 			}
+
+			if ($prefs = $cfg['readPreference']) {
+				$prefs = !is_array($prefs) ? array($prefs, array()) : $prefs;
+				$this->server->setReadPreference($prefs[0], $prefs[1]);
+			}
+
 		} catch (Exception $e) {
 			throw new NetworkException("Could not connect to the database.", 503, $e);
 		}
@@ -279,7 +292,7 @@ class MongoDb extends \lithium\data\Source {
 	 * @return boolean True
 	 */
 	public function disconnect() {
-		if ($this->server && $this->server->connected) {
+		if ($this->server && $this->server->getConnections()) {
 			$this->_isConnected = false;
 			unset($this->connection, $this->server);
 		}
@@ -370,7 +383,12 @@ class MongoDb extends \lithium\data\Source {
 	 * @filter
 	 */
 	public function create($query, array $options = array()) {
-		$defaults = array('safe' => false, 'fsync' => false);
+		$_config = $this->_config;
+		$defaults = array(
+			'w' => $_config['w'],
+			'wTimeoutMS' => $_config['wTimeoutMS'],
+			'fsync' => false
+		);
 		$options += $defaults;
 		$this->_checkConnection();
 
@@ -391,6 +409,7 @@ class MongoDb extends \lithium\data\Source {
 				$data['create']['_id'] = $self->invokeMethod('_saveFile', array($data['create']));
 			} else {
 				$result = $self->connection->{$source}->insert($data['create'], $options);
+				$result = $self->invokeMethod('_ok', array($result));
 			}
 
 			if ($result === true || isset($result['ok']) && (boolean) $result['ok'] === true) {
@@ -503,7 +522,14 @@ class MongoDb extends \lithium\data\Source {
 	 * @filter
 	 */
 	public function update($query, array $options = array()) {
-		$defaults = array('upsert' => false, 'multiple' => true, 'safe' => false, 'fsync' => false);
+		$_config = $this->_config;
+		$defaults = array(
+			'upsert' => false,
+			'multiple' => true,
+			'w' => $_config['w'],
+			'wTimeoutMS' => $_config['wTimeoutMS'],
+			'fsync' => false
+		);
 		$options += $defaults;
 		$this->_checkConnection();
 
@@ -530,7 +556,8 @@ class MongoDb extends \lithium\data\Source {
 			if ($options['multiple'] && !preg_grep('/^\$/', array_keys($update))) {
 				$update = array('$set' => $update);
 			}
-			if ($self->connection->{$source}->update($args['conditions'], $update, $options)) {
+			$result = $self->connection->{$source}->update($args['conditions'], $update, $options);
+			if ($self->invokeMethod('_ok', array($result))) {
 				$query->entity() ? $query->entity()->sync() : null;
 				return true;
 			}
@@ -548,7 +575,12 @@ class MongoDb extends \lithium\data\Source {
 	 */
 	public function delete($query, array $options = array()) {
 		$this->_checkConnection();
-		$defaults = array('justOne' => false, 'safe' => false, 'fsync' => false);
+		$_config = $this->_config;
+		$defaults = array('justOne' => false,
+			'w' => $_config['w'],
+			'wTimeoutMS' => $_config['wTimeoutMS'],
+			'fsync' => false
+		);
 		$options = array_intersect_key($options + $defaults, $defaults);
 		$_config = $this->_config;
 		$params = compact('query', 'options');
@@ -559,8 +591,11 @@ class MongoDb extends \lithium\data\Source {
 			$args = $query->export($self, array('keys' => array('source', 'conditions')));
 			$source = $args['source'];
 
-			if ($source == "{$_config['gridPrefix']}.files") {
-				return $self->invokeMethod('_deleteFile', array($args['conditions']));
+			if ($source === "{$_config['gridPrefix']}.files") {
+				$result = $self->invokeMethod('_deleteFile', array($conditions));
+			} else {
+				$result = $self->connection->{$args['source']}->remove($conditions, $options);
+				$result = $self->invokeMethod('_ok', array($result));
 			}
 
 			return $self->connection->{$args['source']}->remove($args['conditions'], $options);
@@ -568,7 +603,8 @@ class MongoDb extends \lithium\data\Source {
 	}
 
 	protected function _deleteFile($conditions, $options = array()) {
-		$defaults = array('safe' => true);
+		$_config = $this->_config;
+		$defaults = array('w' => $_config['w'], 'wTimeoutMS' => $_config['wTimeoutMS']);
 		$options += $defaults;
 
 		$grid = $this->connection->getGridFS();
@@ -576,6 +612,18 @@ class MongoDb extends \lithium\data\Source {
 		return $grid->remove($conditions, $options);
 	}
 
+	/**
+	 * Parse a `MongoCollection::<insert|update|delete>()` response and
+	 * return `true` on success.
+	 *
+	 * @return boolean
+	 */
+	protected function _ok($result) {
+		if (is_bool($result)) {
+			return $result;
+		}
+		return !isset($result['err']) || $result['err'] === null;
+	}
 	/**
 	 * Executes calculation-related queries, such as those required for `count`.
 	 *
